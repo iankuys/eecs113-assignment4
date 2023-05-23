@@ -31,7 +31,14 @@ GPIO.setup(LED_B, GPIO.OUT)
 # Blink mode control variables
 blink_period = 1.0  # Initial blink period set to 1 (in seconds)
 blink_active = False  # Flag to indicate if blink mode is active
-blink_thread = None  # Reference to the blink thread
+thread = None  # Reference to the blink thread
+
+# Turn off all LEDs
+def turn_off_leds():
+    GPIO.output(LED_G, GPIO.LOW)  
+    GPIO.output(LED_R, GPIO.LOW)
+    GPIO.output(LED_Y, GPIO.LOW)
+    GPIO.output(LED_B, GPIO.LOW)
 
 # Function to handle blinking LEDs in a separate thread
 def blink_thread():
@@ -47,20 +54,21 @@ def blink_thread():
 
 # Function to handle button presses
 def handle(pin):
-    global blink_active, blink_thread, blink_period
+    global blink_active, thread, blink_period
     # Yellow and Blue buttons pressed simultaneously
     if pin == BTN_Y or pin == BTN_B:
         if GPIO.input(BTN_Y) == GPIO.LOW and GPIO.input(BTN_B) == GPIO.LOW:
             if blink_active:
                 # Stop blink mode
                 blink_active = False
-                blink_thread.join()  # Wait for the blink thread to finish
+                thread.join()  # Wait for the blink thread to finish
+                turn_off_leds()
             else:
                 # Start blink mode
                 blink_active = True
-                blink_thread = threading.Thread(target=blink_thread)
-                blink_thread.daemon = True
-                blink_thread.start()
+                thread = threading.Thread(target=blink_thread)
+                thread.daemon = True
+                thread.start()
     elif pin == BTN_R:
         # Red button pressed, double the blink period
         blink_period *= 2
