@@ -43,6 +43,7 @@ def turn_off_leds():
 # This function takes care of blinking and is called by the blinking thread
 def blink_thread():
     global blink_state, blink_period
+    # Assuming that all leds are turned off initially
     led_state = GPIO.HIGH
     while blink_state:
         if (led_state == GPIO.LOW):
@@ -50,25 +51,27 @@ def blink_thread():
         else:
             led_state = GPIO.LOW
             
+        # Set the LED state for all LEDs    
         GPIO.output(LED_G, led_state)
         GPIO.output(LED_R, led_state)
         GPIO.output(LED_Y, led_state)
         GPIO.output(LED_B, led_state)
+        # Pause for half the blink period
         time.sleep(blink_period / 2.0)
 
 # This function catches interrupt and spawn the blink_thread() thread to handle the interrupt
 def handle(pin):
     global blink_state, thread, blink_period
-    # Yellow and Blue buttons pressed simultaneously
     if (pin == BTN_Y) or (pin == BTN_B):
+        # Yellow and Blue buttons pressed simultaneously
         if (GPIO.input(BTN_Y) == GPIO.LOW) and (GPIO.input(BTN_B) == GPIO.LOW):
             if blink_state:
-                # Stop blink mode
+                # Stop blink mode by setting blink state to False
                 blink_state = False
                 thread.join()  # Wait for the blink thread to finish
                 turn_off_leds()
             else:
-                # Start blink mode
+                # Start blink mode by setting blink state to true
                 blink_state = True
                 thread = threading.Thread(target=blink_thread)
                 thread.daemon = True
