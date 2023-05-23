@@ -5,7 +5,7 @@ import threading
 import RPi.GPIO as GPIO
 import time
 
-# Pin configurations
+### Pin Numbering Declaration (setup channel mode of the Pi to Board values ) ###
 BTN_G = 25  # Green pushbutton
 BTN_R = 18  # Red pushbutton
 BTN_Y = 27  # Yellow pushbutton
@@ -15,7 +15,7 @@ LED_R = 6   # Red LED
 LED_Y = 12  # Yellow LED
 LED_B = 13  # Blue LED
 
-# GPIO setup
+### Set GPIO pins (for inputs and outputs)
 GPIO.setwarnings(False) # to disable warnings
 GPIO.setmode(GPIO.BCM)
 
@@ -29,9 +29,9 @@ GPIO.setup(LED_Y, GPIO.OUT)
 GPIO.setup(LED_B, GPIO.OUT)
 
 # Blink mode control variables
+thread = None  # Reference to the thread
 blink_period = 1.0  # Initial blink period set to 1 (in seconds)
-blink_active = False  # Flag to indicate if blink mode is active
-thread = None  # Reference to the blink thread
+blink_state = False  # Flag to indicate if blink mode is active
 
 # Turn off all LEDs
 def turn_off_leds():
@@ -40,39 +40,43 @@ def turn_off_leds():
     GPIO.output(LED_Y, GPIO.LOW)
     GPIO.output(LED_B, GPIO.LOW)
 
-# Function to handle blinking LEDs in a separate thread
+# This function takes care of blinking and is called by the blinking thread
 def blink_thread():
-    global blink_active, blink_period
+    global blink_state, blink_period
     led_state = GPIO.HIGH
-    while blink_active:
-        led_state = GPIO.HIGH if led_state == GPIO.LOW else GPIO.LOW
+    while blink_state:
+        if (led_state == GPIO.LOW):
+            led_state = GPIO.HIGH 
+        else:
+            led_state = GPIO.LOW
+            
         GPIO.output(LED_G, led_state)
         GPIO.output(LED_R, led_state)
         GPIO.output(LED_Y, led_state)
         GPIO.output(LED_B, led_state)
         time.sleep(blink_period / 2.0)
 
-# Function to handle button presses
+# This function catches interrupt and spawn the blink_thread() thread to handle the interrupt
 def handle(pin):
-    global blink_active, thread, blink_period
+    global blink_state, thread, blink_period
     # Yellow and Blue buttons pressed simultaneously
-    if pin == BTN_Y or pin == BTN_B:
-        if GPIO.input(BTN_Y) == GPIO.LOW and GPIO.input(BTN_B) == GPIO.LOW:
-            if blink_active:
+    if (pin == BTN_Y) or (pin == BTN_B):
+        if (GPIO.input(BTN_Y) == GPIO.LOW) and (GPIO.input(BTN_B) == GPIO.LOW):
+            if blink_state:
                 # Stop blink mode
-                blink_active = False
+                blink_state = False
                 thread.join()  # Wait for the blink thread to finish
                 turn_off_leds()
             else:
                 # Start blink mode
-                blink_active = True
+                blink_state = True
                 thread = threading.Thread(target=blink_thread)
                 thread.daemon = True
                 thread.start()
-    elif pin == BTN_R:
+    elif (pin == BTN_R):
         # Red button pressed, double the blink period
         blink_period *= 2
-    elif pin == BTN_G:
+    elif (pin == BTN_G):
         # Green button pressed, halve the blink period
         blink_period /= 2
 
@@ -83,6 +87,8 @@ GPIO.add_event_detect(BTN_R, GPIO.FALLING, callback=handle, bouncetime=200)
 GPIO.add_event_detect(BTN_Y, GPIO.FALLING, callback=handle, bouncetime=200)
 GPIO.add_event_detect(BTN_B, GPIO.FALLING, callback=handle, bouncetime=200)
 
-# Endless loop with delay to wait for events
+# endless loop with delay to wait for event detections
 while True:
     time.sleep(1e6)
+    
+GPIO.cleanup()
